@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Juan gastos</title>
+<style>
+:root{--bg:#f5f8fc;--card:#fff;--ink:#10233f;--muted:#6f7f93;--blue:#0a84ff;--blue2:#64b5ff;--line:#e3ebf5;--danger:#ff453a;--ok:#30d158}
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:linear-gradient(180deg,#eef6ff,#f8fafc 38%);color:var(--ink)}
+.app{max-width:1050px;margin:auto;padding:18px 14px 40px}.top{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:20px}
+h1{font-size:28px;margin:0;letter-spacing:-.8px}.sub{color:var(--muted);font-size:13px;margin-top:4px}
+select,input,button{font:inherit}.month{border:1px solid var(--line);background:#fff;padding:10px 12px;border-radius:14px;color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 8px 28px rgba(25,74,130,.06)}
+.kpi b{display:block;font-size:22px;margin-top:5px}
+.kpi.balance-positive{background:#effbf3;border-color:#b9e8c7}
+.kpi.balance-positive .label,.kpi.balance-positive b{color:#16833b}
+.kpi.balance-negative{background:#fff1f0;border-color:#ffc7c2}
+.kpi.balance-negative .label,.kpi.balance-negative b{color:#d92d20}
+.kpi.balance-zero{background:#fff9eb;border-color:#f6df9b}
+.kpi.balance-zero .label,.kpi.balance-zero b{color:#9a6700}.label{font-size:12px;color:var(--muted);font-weight:600}.main{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:14px}
+h2{font-size:17px;margin:0 0 14px}.row{display:flex;flex-direction:column-reverse;gap:3px;align-items:stretch;padding:6px 0;border-bottom:1px solid #edf2f8}.row:last-child{border:0}.row input,.income input{width:100%;border:1px solid var(--line);border-radius:12px;padding:9px;background:#fbfdff;text-align:right;font-weight:700}
+.section{margin-top:12px}.expense-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 12px}.expense-grid .section-title{grid-column:1/-1}.expense-grid .row{border:1px solid var(--line);padding:9px;border-radius:14px;background:#fbfdff}.expense-grid .row input{font-size:15px;padding:4px 2px;border:0;background:transparent;text-align:left}.expense-grid .row label{font-size:11px;color:var(--muted)}.section-title{font-size:13px;font-weight:700;color:#3e5c7e;margin:13px 0 3px}.income{display:grid;grid-template-columns:1fr 145px;gap:10px;margin-bottom:9px}
+.btn{border:0;background:var(--blue);color:#fff;border-radius:13px;padding:10px 14px;font-weight:700;cursor:pointer}.btn.ghost{background:#eef6ff;color:var(--blue)}
+.progress{height:10px;background:#edf3fa;border-radius:99px;overflow:hidden;margin-top:12px}.progress>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--blue2));width:0}
+.chart{height:190px;display:flex;align-items:end;gap:8px;padding-top:18px}.barwrap{flex:1;text-align:center;color:var(--muted);font-size:10px}.bar{background:linear-gradient(180deg,var(--blue2),var(--blue));border-radius:7px 7px 3px 3px;min-height:3px}.legend{font-size:12px;color:var(--muted);line-height:1.6}
+.daily-form{display:grid;grid-template-columns:1fr 120px 110px auto;gap:8px}.daily-form input,.daily-form select{border:1px solid var(--line);border-radius:12px;padding:9px;background:#fff}.tx{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #edf2f8;font-size:13px}.tx small{color:var(--muted)}.delete{border:0;background:none;color:var(--danger);cursor:pointer}
+.footer{text-align:center;color:#8b99aa;font-size:11px;margin-top:22px}
+@media(max-width:800px){.expense-grid{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr 1fr}.main{grid-template-columns:1fr}.daily-form{grid-template-columns:1fr 1fr}.daily-form .btn{grid-column:1/-1}.income{grid-template-columns:1fr 120px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body><div class="app">
+<div class="top"><div><h1>Juan gastos</h1><div class="sub">Tu panorama financiero, mes a mes.</div></div><input id="month" class="month" type="month"></div>
+
+<div class="grid">
+<div class="card kpi"><span class="label">INGRESOS</span><b id="kIncome">$ 0</b></div>
+<div class="card kpi"><span class="label">GASTOS</span><b id="kExpense">$ 0</b></div>
+<div class="card kpi" id="balanceCard"><span class="label">DISPONIBLE</span><b id="kBalance">$ 0</b></div>
+<div class="card kpi"><span class="label">% DEL INGRESO GASTADO</span><b id="kPct">0%</b><div class="progress"><i id="pctBar"></i></div></div>
+</div>
+
+<div class="main">
+<div>
+<div class="card">
+<h2>Ingresos</h2>
+<div class="income"><label>Sueldo</label><input data-income="salary" inputmode="decimal" placeholder="0"></div>
+<div class="income"><label>Ingresos variados</label><input data-income="other" inputmode="decimal" placeholder="0"></div>
+</div>
+
+<div class="card section">
+<h2>Gastos del mes</h2>
+<div id="fixed" class="expense-grid"></div>
+</div>
+
+<div class="card section">
+<h2>Gastos diarios</h2>
+<div class="daily-form">
+<input id="dDesc" placeholder="Ej. café, taxi...">
+<input id="dAmount" inputmode="decimal" placeholder="$ 0">
+<select id="dCat"><option>Café</option><option>Colectivo</option><option>Taxi</option><option>Comida</option><option>Otros</option></select>
+<button class="btn" id="addDaily">Agregar</button>
+</div>
+<div id="txs" style="margin-top:10px"></div>
+</div>
+</div>
+
+<div>
+<div class="card"><h2>Distribución</h2><div id="breakdown" class="legend"></div></div>
+<div class="card section"><h2>Distribución visual</h2><canvas id="pie" width="260" height="260" style="width:100%;max-width:260px;display:block;margin:auto"></canvas></div>
+<div class="card section"><h2>Evolución mensual</h2><div id="chart" class="chart"></div><div class="legend">Barras: gastos totales guardados por mes.</div></div>
+<div class="card section"><h2>Datos</h2><div class="legend">La información se guarda automáticamente en este navegador. También podés descargar el mes actual en Excel o guardar/restaurar una copia de seguridad.</div><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn" id="exportExcel">Exportar Excel</button><button class="btn ghost" id="export">Backup JSON</button><label class="btn ghost" style="cursor:pointer">Restaurar<input id="import" type="file" accept=".json" hidden></label></div></div>
+</div>
+</div>
+<div class="footer">Diseñado para funcionar como sitio estático en GitHub Pages · Datos locales en tu navegador</div>
+</div>
+<script>
+const cats=[
+["Alquiler","alquiler"],["Expensas","expensas"],["Luz","luz"],["Agua","agua"],["ABL","abl"],["Internet","internet"],
+["Prepaga de salud","prepaga"],["Servicio telefónico","telefono"],["Tarjeta Visa","visa"],["Tarjeta Mastercard","mastercard"],
+["Comida del mes","comida"],["Gym","gym"],["Salidas con amigos","salidas"],["Deudas","deudas"]
+];
+const $=s=>document.querySelector(s), money=n=>new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(n||0);
+const parse=v=>Number(String(v||"").replace(/\./g,"").replace(",", "."))||0;
+const KEY="nexo_gastos_v1"; let db=JSON.parse(localStorage.getItem(KEY)||"{}");
+function ym(){return $("#month").value}
+function model(){let k=ym(); if(!db[k]) db[k]={income:{salary:0,other:0},fixed:{},daily:[]}; return db[k]}
+function save(){localStorage.setItem(KEY,JSON.stringify(db)); render()}
+$("#fixed").innerHTML=cats.map(([n,k],i)=>`${[0,6,8,10,13].includes(i)?`<div class="section-title">${i===0?"Hogar":i===6?"Servicios personales":i===8?"Tarjetas":i===10?"Vida": "Compromisos"}</div>`:""}<div class="row"><label>${n}</label><input data-fixed="${k}" inputmode="decimal" placeholder="0"></div>`).join("");
+const now=new Date(); $("#month").value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+function pretty(n){return n?new Intl.NumberFormat("es-AR",{maximumFractionDigits:0}).format(parse(n)):""}
+function drawPie(m){
+ const c=$("#pie"); if(!c)return; const x=c.getContext("2d"), cx=130,cy=130,r=95;
+ const groups=[
+ ["Hogar",["alquiler","expensas","luz","agua","abl","internet"]],
+ ["Servicios",["prepaga","telefono"]],["Tarjetas",["visa","mastercard"]],
+ ["Vida",["comida","gym","salidas"]],["Deudas",["deudas"]]];
+ let vals=groups.map(g=>g[1].reduce((a,k)=>a+parse(m.fixed[k]),0));
+ vals.push(m.daily.reduce((a,b)=>a+parse(b.amount),0)); let total=vals.reduce((a,b)=>a+b,0);
+ x.clearRect(0,0,260,260); if(!total){x.fillStyle="#dfe9f5";x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.fill();return}
+ const colors=["#0a84ff","#64b5ff","#5e8cff","#7dc8ff","#356fd6","#9ad8ff"]; let a=-Math.PI/2;
+ vals.forEach((v,i)=>{if(!v)return;let b=a+v/total*Math.PI*2;x.beginPath();x.moveTo(cx,cy);x.arc(cx,cy,r,a,b);x.closePath();x.fillStyle=colors[i];x.fill();a=b});
+ x.fillStyle="#fff";x.beginPath();x.arc(cx,cy,48,0,Math.PI*2);x.fill();
+ x.fillStyle="#10233f";x.font="600 13px -apple-system";x.textAlign="center";x.fillText("Gastos",cx,cy-4);x.font="700 12px -apple-system";x.fillText(money(total),cx,cy+15);
+}
+function render(){
+ let m=model();
+ document.querySelectorAll("[data-income]").forEach(x=>{if(document.activeElement!==x)x.value=pretty(m.income[x.dataset.income])});
+ document.querySelectorAll("[data-fixed]").forEach(x=>{if(document.activeElement!==x)x.value=pretty(m.fixed[x.dataset.fixed])});
+ let inc=Object.values(m.income).reduce((a,b)=>a+parse(b),0), fixed=Object.values(m.fixed).reduce((a,b)=>a+parse(b),0), daily=m.daily.reduce((a,b)=>a+parse(b.amount),0), exp=fixed+daily, bal=inc-exp, pct=inc?exp/inc*100:0;
+ $("#kIncome").textContent=money(inc);$("#kExpense").textContent=money(exp);$("#kBalance").textContent=money(bal);$("#kPct").textContent=pct.toFixed(1)+"%";$("#pctBar").style.width=Math.min(pct,100)+"%";
+ const bc=$("#balanceCard");
+ bc.classList.remove("balance-positive","balance-negative","balance-zero");
+ bc.classList.add(bal>0?"balance-positive":bal<0?"balance-negative":"balance-zero");
+ $("#txs").innerHTML=m.daily.length?m.daily.map((t,i)=>`<div class="tx"><span><b>${t.desc||t.cat}</b><br><small>${t.cat}</small></span><span>${money(t.amount)} <button class="delete" data-del="${i}">×</button></span></div>`).join(""):`<div class="legend">Todavía no cargaste gastos diarios.</div>`;
+ let groups={Hogar:["alquiler","expensas","luz","agua","abl","internet"],"Servicios":["prepaga","telefono"],"Tarjetas":["visa","mastercard"],"Vida":["comida","gym","salidas"],"Deudas":["deudas"]};
+ $("#breakdown").innerHTML=Object.entries(groups).map(([g,ks])=>{let v=ks.reduce((s,k)=>s+parse(m.fixed[k]),0);return `<div style="display:flex;justify-content:space-between"><span>${g}</span><b>${money(v)}</b></div>`}).join("")+`<div style="display:flex;justify-content:space-between"><span>Diarios</span><b>${money(daily)}</b></div>`;
+ drawChart(); drawPie(m);
+}
+function drawChart(){
+ let keys=Object.keys(db).sort().slice(-6), vals=keys.map(k=>Object.values(db[k].fixed||{}).reduce((a,b)=>a+parse(b),0)+(db[k].daily||[]).reduce((a,b)=>a+parse(b.amount),0)), max=Math.max(...vals,1);
+ $("#chart").innerHTML=keys.length?keys.map((k,i)=>`<div class="barwrap"><div class="bar" title="${money(vals[i])}" style="height:${Math.max(vals[i]/max*150,3)}px"></div><div>${k.slice(5)}/${k.slice(2,4)}</div></div>`).join(""):`<div class="legend">Sin historial todavía.</div>`;
+}
+document.addEventListener("input",e=>{
+ if(e.target.dataset.income||e.target.dataset.fixed){
+   const el=e.target;
+   const digits=el.value.replace(/\D/g,"");
+   const n=Number(digits)||0;
+   if(el.dataset.income) model().income[el.dataset.income]=n;
+   if(el.dataset.fixed) model().fixed[el.dataset.fixed]=n;
+   el.value=digits ? new Intl.NumberFormat("es-AR",{maximumFractionDigits:0}).format(n) : "";
+   localStorage.setItem(KEY,JSON.stringify(db));
+   render();
+ }
+});
+$("#month").addEventListener("change",render);
+document.addEventListener("focusout",e=>{if(e.target.dataset.income||e.target.dataset.fixed)e.target.value=pretty(e.target.value)});
+$("#addDaily").onclick=()=>{let a=parse($("#dAmount").value),d=$("#dDesc").value.trim();if(!a)return;model().daily.push({desc:d,amount:a,cat:$("#dCat").value,date:new Date().toISOString()});$("#dAmount").value="";$("#dDesc").value="";save()};
+document.addEventListener("click",e=>{if(e.target.dataset.del!==undefined){model().daily.splice(Number(e.target.dataset.del),1);save()}});
+
+$("#exportExcel").onclick=()=>{
+ if(typeof XLSX==="undefined"){alert("No se pudo cargar el generador de Excel. Revisá tu conexión e intentá de nuevo.");return}
+ const m=model(), inc=Object.values(m.income).reduce((a,b)=>a+parse(b),0);
+ const daily=m.daily.reduce((a,b)=>a+parse(b.amount),0);
+ const rows=[
+  ["JUAN GASTOS — CONTROL DE FINANZAS MENSUALES","","",""],
+  ["Mes",ym(),"",""],
+  ["","","",""],
+  ["INGRESOS","","",""],
+  ["Sueldo",parse(m.income.salary),"",""],
+  ["Ingresos variados",parse(m.income.other),"",""],
+  ["INGRESO MENSUAL TOTAL",inc,"",""],
+  ["","","",""],
+  ["GASTOS","","",""],
+  ["Categoría","Monto","Saldo después del gasto","% del ingreso"]
+ ];
+ let saldo=inc, r=11;
+ cats.forEach(([name,key])=>{let v=parse(m.fixed[key]);saldo-=v;rows.push([name,v,{f:`$B$7-B${r}`},{f:`IF($B$7=0,0,B${r}/$B$7)`}]);r++});
+ saldo-=daily; rows.push(["Gastos diarios",daily,{f:`C${r-1}-B${r}`},{f:`IF($B$7=0,0,B${r}/$B$7)`}]); r++;
+ const first=11,last=r-1;
+ rows.push(["TOTAL GASTOS",{f:`SUM(B${first}:B${last})`},{f:`$B$7-B${r}`},{f:`IF($B$7=0,0,B${r}/$B$7)`}]); const totalRow=r; r++;
+ rows.push(["","","",""],["RESUMEN","","",""],["Ingreso mensual",{f:"$B$7"},"",""],["Total gastos",{f:`B${totalRow}`},"",""],["Dinero disponible",{f:`$B$7-B${totalRow}`},"",""]);
+ const ws=XLSX.utils.aoa_to_sheet(rows);
+ ws["!cols"]=[{wch:25},{wch:18},{wch:24},{wch:16}];
+ for(let rr=5;rr<=rows.length;rr++){if(ws[`B${rr}`])ws[`B${rr}`].z='"$" #,##0';if(ws[`C${rr}`])ws[`C${rr}`].z='"$" #,##0';if(ws[`D${rr}`])ws[`D${rr}`].z='0.0%'}
+ const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Finanzas Mensuales");
+ if(m.daily.length){
+   const d=[["Fecha","Categoría","Descripción","Monto"],...m.daily.map(x=>[new Date(x.date).toLocaleDateString("es-AR"),x.cat,x.desc||x.cat,parse(x.amount)])];
+   const wd=XLSX.utils.aoa_to_sheet(d);wd["!cols"]=[{wch:14},{wch:16},{wch:34},{wch:18}];
+   for(let i=2;i<=d.length;i++)if(wd[`D${i}`])wd[`D${i}`].z='"$" #,##0';
+   XLSX.utils.book_append_sheet(wb,wd,"Gastos diarios");
+ }
+ XLSX.writeFile(wb,`Juan_gastos_${ym()}.xlsx`);
+};
+$("#export").onclick=()=>{let b=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="control-gastos-backup.json";a.click();URL.revokeObjectURL(a.href)};
+$("#import").onchange=async e=>{try{db=JSON.parse(await e.target.files[0].text());save()}catch{alert("El archivo no es válido.")}};
+render();
+</script></body></html>
